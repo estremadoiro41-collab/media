@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PromptStation | Administración de Prompts</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Local stylesheet -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- Main App Wrapper -->
+    <div class="app-container">
+        
+        <!-- Premium Glassmorphic Header -->
+        <header class="main-header">
+            <div class="header-logo">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-terminal"></i>
+                </div>
+                <h1>Prompt<span>Station</span></h1>
+            </div>
+            
+            <div class="header-actions">
+                <button id="themeToggleBtn" class="icon-btn" title="Cambiar Tema" aria-label="Cambiar Tema">
+                    <i class="fa-solid fa-sun icon-light"></i>
+                    <i class="fa-solid fa-moon icon-dark"></i>
+                </button>
+                <button id="openCreateDrawerBtn" class="btn btn-primary">
+                    <i class="fa-solid fa-plus"></i> Nuevo Prompt
+                </button>
+            </div>
+        </header>
+
+        <!-- Configuration Notice / API input (fallback) -->
+        <div id="setupAlert" class="setup-alert hidden">
+            <div class="alert-content">
+                <i class="fa-solid fa-circle-info"></i>
+                <div class="alert-text">
+                    <strong>Configuración inicial:</strong> Asegúrate de pegar la URL de tu Web App de Google Apps Script en <code>app.js</code> para conectar tu base de datos de Google Sheets.
+                </div>
+            </div>
+        </div>
+
+        <!-- Toolbar / Search and Filters -->
+        <section class="toolbar">
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" id="searchInput" placeholder="Buscar por nombre, categoría o contenido..." autocomplete="off">
+                <button id="clearSearchBtn" class="clear-search hidden"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div class="category-filters-container">
+                <span class="filter-label"><i class="fa-solid fa-tags"></i> Categorías:</span>
+                <div class="category-pills" id="categoryPills">
+                    <button class="pill active" data-category="all">Todos</button>
+                    <!-- Categories will be rendered dynamically here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Workspace Area -->
+        <main class="main-content">
+            <!-- Loading Indicator -->
+            <div id="loadingIndicator" class="loading-state">
+                <div class="spinner"></div>
+                <p>Cargando tus prompts desde Google Sheets...</p>
+            </div>
+
+            <!-- Prompts Grid -->
+            <div id="promptsGrid" class="prompts-grid hidden">
+                <!-- Cards will be rendered dynamically here -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="empty-state hidden">
+                <div class="empty-icon">
+                    <i class="fa-regular fa-folder-open"></i>
+                </div>
+                <h3 id="emptyTitle">No se encontraron prompts</h3>
+                <p id="emptyMessage">Comienza agregando un nuevo prompt para organizar tus plantillas y flujos de trabajo.</p>
+                <button id="emptyStateBtn" class="btn btn-primary mt-4">
+                    <i class="fa-solid fa-plus"></i> Crear mi primer Prompt
+                </button>
+            </div>
+        </main>
+        
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>&copy; 2026 PromptStation. Conectado a Google Sheets.</p>
+        </footer>
+    </div>
+
+    <!-- Sliding Side Drawer for Adding/Editing Prompts (ABM Form) -->
+    <div id="drawerOverlay" class="drawer-overlay"></div>
+    <div id="formDrawer" class="form-drawer">
+        <div class="drawer-header">
+            <h2 id="drawerTitle">Nuevo Prompt</h2>
+            <button id="closeDrawerBtn" class="icon-btn close-drawer" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        
+        <form id="promptForm" class="drawer-form" novalidate>
+            <input type="hidden" id="promptId">
+            
+            <div class="form-group">
+                <label for="promptCategory">Categoría</label>
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-tag input-icon"></i>
+                    <input type="text" id="promptCategory" placeholder="Ej: Desarrollo, Redacción, Marketing..." list="categoriesList" required>
+                    <datalist id="categoriesList">
+                        <!-- Dynamic categories will be loaded here for autocomplete -->
+                    </datalist>
+                </div>
+                <span class="error-msg" id="categoryError">La categoría es requerida.</span>
+            </div>
+
+            <div class="form-group">
+                <label for="promptName">Nombre del Prompt</label>
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-heading input-icon"></i>
+                    <input type="text" id="promptName" placeholder="Ej: Refactorizador de código, Generador de copies..." required>
+                </div>
+                <span class="error-msg" id="nameError">El nombre es requerido.</span>
+            </div>
+
+            <div class="form-group">
+                <label for="promptText">Cuerpo del Prompt</label>
+                <div class="textarea-wrapper">
+                    <textarea id="promptText" rows="8" placeholder="Escribe el prompt aquí. Usa placeholders como [tema] o {variable} si lo deseas..." required></textarea>
+                </div>
+                <span class="error-msg" id="textError">El cuerpo del prompt es requerido y no puede estar vacío.</span>
+            </div>
+
+            <div class="form-group">
+                <label for="promptExamples">Ejemplos de Uso</label>
+                <div class="textarea-wrapper">
+                    <textarea id="promptExamples" rows="4" placeholder="Escribe ejemplos de cómo utilizar este prompt o qué outputs produce..."></textarea>
+                </div>
+            </div>
+
+            <div class="drawer-actions">
+                <button type="button" id="cancelFormBtn" class="btn btn-secondary">Cancelar</button>
+                <button type="submit" id="savePromptBtn" class="btn btn-primary">
+                    <span class="btn-text">Guardar Prompt</span>
+                    <span class="btn-spinner hidden"><i class="fa-solid fa-circle-notch fa-spin"></i></span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Confirmation Modal for Deletion -->
+    <div id="confirmModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3>¿Confirmar eliminación?</h3>
+                <button id="closeModalBtn" class="icon-btn" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <p>Estás a punto de eliminar el prompt <strong id="deletePromptName">"Refactorizador de código"</strong>.</p>
+                <p class="warning-text"><i class="fa-solid fa-triangle-exclamation"></i> Esta acción no se puede deshacer y los datos se eliminarán de tu Google Sheet.</p>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelDeleteBtn" class="btn btn-secondary">Cancelar</button>
+                <button id="confirmDeleteBtn" class="btn btn-danger">
+                    <span class="btn-text">Eliminar</span>
+                    <span class="btn-spinner hidden"><i class="fa-solid fa-circle-notch fa-spin"></i></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Local logic -->
+    <script src="app.js"></script>
+</body>
+</html>
